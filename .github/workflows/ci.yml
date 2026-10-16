@@ -1,0 +1,124 @@
+name: Manuscript CI
+permissions:
+  contents: read
+  pull-requests: write
+on:
+  push:
+    branches:
+      - "main"
+      - "*release*"
+  pull_request:
+    branches:
+      - "main"
+      - "*release*"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    name: Lint Sources
+    runs-on: xcode-27
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+    - name: Install Toolchain
+      uses: jdx/mise-action@v4
+      with:
+        version: 2026.8.15
+    - name: Select Xcode Version
+      run: ./.scripts/xcode-select
+    - name: Lint with SwiftFormat
+      run: mise lint
+  test-macos-spm:
+    name: Test Manuscript (macOS)
+    strategy:
+      matrix:
+        swift: ['6.2', '6.3', '6.4']
+        include:
+          - swift: '6.2'
+            runner: 'macos-26'
+            xcode: '26.5'
+          - swift: '6.3'
+            runner: 'macos-26'
+            xcode: '26.5'
+          - swift: '6.4'
+            runner: 'xcode-27'
+            xcode: '27.0'
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Select Xcode Version
+        run: ./.scripts/xcode-select ${{ matrix.xcode }}
+      - name: Test Manuscript
+        run: swift test -v
+  test-ubuntu-spm:
+    name: Test Manuscript (Ubuntu)
+    strategy:
+      matrix:
+        swift: ['6.2', '6.3', '6.4']
+    runs-on: ubuntu-latest
+    container:
+      image: swift:${{ matrix.swift }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Test Manuscript
+        run: swift test -v
+  test-windows-spm:
+    name: Test Manuscript (Windows)
+    strategy:
+      fail-fast: false
+      matrix:
+        swift: ['6.2', '6.3', '6.4']
+        include:
+          - swift: '6.2'
+            toolchain: '6.2.4'
+          - swift: '6.3'
+            toolchain: '6.3.3'
+          - swift: '6.4'
+            toolchain: '6.4.0'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Swift
+        uses: compnerd/gha-setup-swift@main
+        with:
+          swift-version: swift-${{ matrix.toolchain }}-release
+          swift-build: ${{ matrix.toolchain }}-RELEASE
+      - name: Test Manuscript
+        run: swift test -v --disable-xctest -Xlinker /INCREMENTAL:NO
+  lint-docc:
+    name: Validate Documentation
+    runs-on: xcode-27
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+    - name: Select Xcode Version
+      run: ./.scripts/xcode-select
+    - name: Validate Documentation
+      run: ./.scripts/lint-docc
+  validate-pr:
+    name: Validate Pull Request
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    needs:
+      - lint
+      - test-macos-spm
+      - test-ubuntu-spm
+      - test-windows-spm
+      - lint-docc
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check upstream jobs
+        run: |
+          if [[ "${{ needs.lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-macos-spm.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-ubuntu-spm.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-windows-spm.result }}" == "failure" ]] || \
+             [[ "${{ needs.lint-docc.result }}" == "failure" ]]; then
+            echo "❌ Upstream job failed."
+            exit 1
+          else
+            echo "✅ All required jobs completed successfully."
+          fi
