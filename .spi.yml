@@ -1,6 +1,0 @@
-version: 1
-builder:
-  configs:
-  - platform: macOS
-    scheme: Manuscript
-  - documentation_targets: [Manuscript]

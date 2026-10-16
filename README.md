@@ -4,9 +4,8 @@
 [![GitHub Release](https://img.shields.io/github/v/release/vsanthanam/Manuscript?include_prereleases)](https://github.com/vsanthanam/Manuscript/releases)
 [![Build Status](https://img.shields.io/github/check-runs/vsanthanam/Manuscript/main)](https://github.com/vsanthanam/Manuscript/actions)
 [![Swift Version](https://img.shields.io/badge/swift-6.2%20%7C%206.3%20%7C%206.4-critical)](https://swift.org)
-[![Documentation](https://img.shields.io/badge/Documentation-SPI-8A2BE2)](https://swiftpackageindex.com/vsanthanam/Manuscript/documentation/manuscript)
 
-A small JSON format for describing a service, and a Swift parser for it.
+A small JSON format for describing a service
 
 ## Overview
 
